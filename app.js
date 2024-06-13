@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 
 const userRouterV1 = require("./routes/userRouteV1");
 const childRouterV1 = require("./routes/childRouteV1");
-const imageRouterV1 = require("./routes/imageRouteV1")
+// const imageRouterV1 = require("./routes/imageRouteV1")
 const appointmentRouterV1 = require("./routes/appointmentRouteV1");
 const doctorRouterV1 = require("./routes/doctorRouteV1");
 const documentRouterV1 = require("./routes/documentRouterV1");
@@ -22,7 +22,7 @@ const { checkForAuthenticationToken } = require("./middlewares/authentication");
 const { connectMongoDb } = require("./connection");
 
 const app = express();
-const PORT = 4000;
+const PORT = 8080;
 
 // Connection
 connectMongoDb(process.env.MONGO_CONNECTION_URL).then(() =>
@@ -31,7 +31,7 @@ connectMongoDb(process.env.MONGO_CONNECTION_URL).then(() =>
 
 // Ensure Message model is registered
 require("./models/message");
-
+app.get('/',(req,res)=>{res.send("Hello")})
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(bodyParser.json());
@@ -43,6 +43,7 @@ app.use((req, res, next) => {
   fs.appendFile("log.txt", msg, () => { });
   next();
 });
+
 
 // User - Route
 app.use("/api/v1/user", checkForAuthenticationToken(), userRouterV1);
@@ -67,47 +68,67 @@ const io = require("socket.io")(server, {
 });
 
 const jwt = require("jsonwebtoken");
-
+const { validateToken } = require("./services/authentication");
 const Message = mongoose.model("Message");
 const User = mongoose.model("user");
 
-io.use(async (socket, next) => {
+ io.use(async (socket, next) => {
   try {
     const token = socket.handshake.query.token;
-    const payload = await jwt.verify(token, process.env.JWT_SECRET);
-    socket.userId = payload.userId;
-    console.log("user verified");
+    if (!token) {
+      throw new Error('Authentication error: Token missing');
+    }
+    
+    const decoded = validateToken(token);
+
+    socket.userId = decoded.userId;
+    console.log("User verified: " + socket.userId);
     next();
   } catch (err) {
+    console.error("Socket authentication error:", err.message);
     next(new Error('Authentication error'));
   }
 });
 
 io.on("connection", (socket) => {
-  console.log("Connected: " + socket.userId);
+  console.log("Connected: " + socket.id);
 
   socket.on("disconnect", () => {
     console.log("Disconnected: " + socket.userId);
   });
 
-  socket.on("sendMessage", async ({ reciverId, message }) => {
-    if (message.trim().length > 0) {
+  socket.on("sendMessage", async ({ receiverId, message }) => {
+    try {
+      if (!receiverId || !message.trim()) {
+        throw new Error("Receiver ID and message are required.");
+      }
+  
       const user = await User.findOne({ _id: socket.userId });
+      if (!user) {
+        throw new Error("User not found.");
+      }
+  
       const newMessage = new Message({
         senderId: socket.userId,
-        reciverId,
-        message
+        receiverId:receiverId,
+        message:message
       });
-
+  
       await newMessage.save();
-      console.log("message saved sent")
-      io.to(reciverId).emit("newMessage", {
-        message,
+      console.log("Message saved and sent.");
+  
+      // Emitting the new message to the receiver
+      io.to(receiverId).emit("newMessage", {
+        message:message,
         name: user.name,
         userId: socket.userId,
         createdAt: newMessage.createdAt
       });
+    } catch (err) {
+      console.error("Error in sendMessage:", err.message);
+      // Handle error appropriately, emit an error event or log it
     }
+    console.log("reciver:",receiverId,"message:",message,"Sender:",socket.userId);
   });
 
   socket.join(socket.userId);

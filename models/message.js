@@ -6,7 +6,7 @@ const messageSchema = new Schema({
         type: String,  // Corrected type from string to String
         required: 'sender is required',
     },
-    reciverId: {
+    receiverId: {
         type: String,
         required: 'reciver is required',
     },

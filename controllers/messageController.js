@@ -2,20 +2,20 @@ const mongoose = require("mongoose");
 const Message = require("../models/message");
 
 exports.getMessagesBetweenUsers = async (req, res) => {
-    const { senderId, reciverId } = req.body;
-    console.log(`reciverId: ${reciverId}, senderId: ${senderId}`);
+    const { senderId, receiverId } = req.body;
+    console.log(`receiverId: ${receiverId}, senderId: ${senderId}`);
 
-    if (!senderId || !reciverId) {
+    if (!senderId || !receiverId) {
         return res
             .status(400)
-            .json({ error: "senderId and reciverId are required" });
+            .json({ error: "senderId and receiverId are required" });
     }
 
     try {
         const messages = await Message.find({
             $or: [
-                { senderId: senderId, reciverId: reciverId },
-                { senderId: reciverId, reciverId: senderId }
+                { senderId: senderId, receiverId: receiverId },
+                { senderId: receiverId, receiverId: senderId }
             ]
         }).sort({ createdAt: 1 });
 
