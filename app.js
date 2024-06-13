@@ -22,7 +22,7 @@ const { checkForAuthenticationToken } = require("./middlewares/authentication");
 const { connectMongoDb } = require("./connection");
 
 const app = express();
-const PORT = 8080;
+const PORT = 4000;
 
 // Connection
 connectMongoDb(process.env.MONGO_CONNECTION_URL).then(() =>
