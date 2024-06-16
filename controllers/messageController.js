@@ -3,8 +3,8 @@ const Message = require("../models/message");
 
 exports.getMessagesBetweenUsers = async (req, res) => {
     const { senderId, receiverId } = req.body;
+    
     console.log(`receiverId: ${receiverId}, senderId: ${senderId}`);
-
     if (!senderId || !receiverId) {
         return res
             .status(400)
@@ -23,7 +23,7 @@ exports.getMessagesBetweenUsers = async (req, res) => {
             console.log("No messages found");
             return res.status(404).json({ msg: "No messages found" });
         } else {
-            console.log("Messages found:", messages);
+            console.log("Messages found:");
             return res.status(200).json(messages);
         }
     } catch (error) {
